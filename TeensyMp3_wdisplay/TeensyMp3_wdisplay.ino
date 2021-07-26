@@ -25,7 +25,7 @@ Bounce button2 = Bounce(2, 15);  // 15 = 15 ms debounce time
 #define SDCARD_MOSI_PIN  11  // not actually used
 #define SDCARD_SCK_PIN   13  // not actually used
 
-
+int playState = true;
 /*-----------------------------------------------------------------
  *                          DISPLAY
  *---------------------------------------------------------------*/
@@ -74,43 +74,64 @@ const char * filelist[4] = {
   "DOG.WAV", "DOG2.WAV", "DOG3.WAV", "DOG4.WAV"
 };
 
-elapsedMillis blinkTime;
+int playPos = playSdWav1.positionMillis();
 
 void loop() {
+  const char *filename = filelist[filenumber];
+  //AUTOMATIC TRACK SEQUENCER/STEPPER
   //if playSdWav isn't playing...
-  if (playSdWav1.isPlaying() == false) {
-    const char *filename = filelist[filenumber];
+  if (playSdWav1.isPlaying() == false && playState == true) {
     //advance the file number by 1...
     filenumber = filenumber + 1;
     if (filenumber >= 4){
       filenumber = 0;
     }
-    Serial.print("Start playing ");
+    Serial.print("NEW TRACK PLAYING: ");
     Serial.println(filename);
     //then play that next file
     playSdWav1.play(filename);
     delay(10); // wait for library to parse WAV info
   }
   
-  // read pushbuttons
+  //SKIP FORWARD BUTTON
   button0.update();
-  //if button0 is pressed, stop the track
+  /*if button0 is pressed, stop the track (automatically 
+  advancing the track)*/
   if (button0.fallingEdge()) {
     playSdWav1.stop();
   }
-  /*button1.update();
-  *if(button1.fallingEdge()) {
-  *playSdWav1.stop();
-  * 
-  */
-  
+
+  //PLAY/STOP BUTTON
+  //if button1 is pressed..
+  button1.update();
+  if(button1.fallingEdge() && playState == true){
+    //stop the track...
+    playSdWav1.stop();
+    playState = false;
+    Serial.println("STOPPED");
+  }
+  else if(button1.fallingEdge() && playState == false){
+    //and if it's already stopped, play
+    //filenumber = filenumber - 1;
+    //if (filenumber < 0) filenumber = filenumber + 4;
+    playPos = 0;
+    playSdWav1.play(filename);
+    playState = true;
+    Serial.print("PLAYED. CURRENT TRACK:");
+    Serial.println(filename);
+    Serial.print("Current time: ");
+    Serial.println(playSdWav1.positionMillis());
+  }
+
+  //SKIP BACK BUTTON
   button2.update();
   if (button2.fallingEdge()) {
     playSdWav1.stop();
     filenumber = filenumber - 2;
     if (filenumber < 0) filenumber = filenumber + 4;
   }
-  
+
+  //VOLUME KNOB
   // read the knob position (analog input A3)
   int knob = analogRead(A3);
   float vol = (float)knob / 1280.0;
