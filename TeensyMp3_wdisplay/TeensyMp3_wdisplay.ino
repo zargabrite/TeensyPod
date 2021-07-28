@@ -25,7 +25,7 @@ Bounce button2 = Bounce(2, 15);  // 15 = 15 ms debounce time
 #define SDCARD_MOSI_PIN  11  // not actually used
 #define SDCARD_SCK_PIN   13  // not actually used
 
-int playState = true;
+int playState = false;
 /*-----------------------------------------------------------------
  *                          DISPLAY
  *---------------------------------------------------------------*/
@@ -37,8 +37,9 @@ int latchPin = 8; //aka "RCLK" or "STCP"
 int clockPin = 6; //aka "SRCLK" or "SHCP"
 int dataPin = 12; //aka "SER" or "DS"
 
-//-----------------------------------------------------------------
+//------------------------------------------------------------------
 
+//SETUP-------------------------------------------------------------
 void setup() {
   
     //DISPLAY pin setup
@@ -76,12 +77,20 @@ const char * filelist[4] = {
 
 int playPos = playSdWav1.positionMillis();
 
+//LOOP--------------------------------------------------------------
 void loop() {
   const char *filename = filelist[filenumber];
-  //AUTOMATIC TRACK SEQUENCER/STEPPER
+  
+  //TOP IF
   //if playSdWav isn't playing...
   if (playSdWav1.isPlaying() == false && playState == true) {
-    //advance the file number by 1...
+    Serial.print("@TOP IF (start) FILENUMBER: ");
+    Serial.println(filenumber);
+    /*PRINT BOOLEAN
+    Serial.print("@1st if statement (start), boolean:");
+    Serial.println(playState);
+    */
+    //FILE NUMBER STEPPER
     filenumber = filenumber + 1;
     if (filenumber >= 4){
       filenumber = 0;
@@ -90,45 +99,67 @@ void loop() {
     Serial.println(filename);
     //then play that next file
     playSdWav1.play(filename);
-    delay(10); // wait for library to parse WAV info
+    delay(15); // wait for library to parse WAV info
   }
   
   //SKIP FORWARD BUTTON
-  button0.update();
+  button0.update(); 
   /*if button0 is pressed, stop the track (automatically 
   advancing the track)*/
   if (button0.fallingEdge()) {
+    Serial.print("@FORWARD SKIP BUTTON");
     playSdWav1.stop();
-  }
-
-  //PLAY/STOP BUTTON
-  //if button1 is pressed..
-  button1.update();
-  if(button1.fallingEdge() && playState == true){
-    //stop the track...
-    playSdWav1.stop();
-    playState = false;
-    Serial.println("STOPPED");
-  }
-  else if(button1.fallingEdge() && playState == false){
-    //and if it's already stopped, play
-    //filenumber = filenumber - 1;
-    //if (filenumber < 0) filenumber = filenumber + 4;
-    playPos = 0;
-    playSdWav1.play(filename);
-    playState = true;
-    Serial.print("PLAYED. CURRENT TRACK:");
-    Serial.println(filename);
-    Serial.print("Current time: ");
-    Serial.println(playSdWav1.positionMillis());
   }
 
   //SKIP BACK BUTTON
   button2.update();
   if (button2.fallingEdge()) {
+    Serial.print("@BACK SKIP BUTTON");
     playSdWav1.stop();
     filenumber = filenumber - 2;
     if (filenumber < 0) filenumber = filenumber + 4;
+  }
+
+  //PLAY/STOP BUTTON
+  button1.update();
+  //STOP FUNCTION
+  if(button1.fallingEdge() && playState == true){
+    playSdWav1.stop();
+    playState = false;
+    Serial.println("STOPPED");
+  }
+  //PLAY FUNCTION
+  else if(button1.fallingEdge() && playState == false){
+    /*PRINT LOCATION
+    Serial.println("@ELSE IF");
+    */
+    /*PRINT FILE#
+    Serial.print("@ELSE IF (start) FILENUMBER: ");
+    Serial.println(filenumber);
+    */
+    //and if it's already stopped, play
+    //filenumber = filenumber - 1;
+    //if (filenumber < 0) filenumber = filenumber + 4;
+    //playPos = 0;
+    playSdWav1.play(filename);
+    Serial.print("PLAYED (CURRENT TRACK: ");
+    Serial.print(filename);
+    Serial.println(")");
+    /*PRINT POS
+    Serial.print("Playhead position: ");
+    Serial.println(playPos);
+    */
+    playState = true;
+    /*PRINT BOOLEAN
+    Serial.print("@else if (pre-delay), boolean: ");
+    Serial.println(playState);
+    */
+    delay(20);
+    //Serial.println("delay over");
+    /*PRINT BOOLEAN
+    Serial.print("@else if (end), boolean: ");
+    Serial.println(playState);
+    */
   }
 
   //VOLUME KNOB
@@ -145,7 +176,7 @@ void loop() {
    * equal to the track numberq. This will need to be split into
    * separate digits...
    */
-  shiftOut(dataPin, clockPin, LSBFIRST, dec_digits[filenumber]);
+  shiftOut(dataPin, clockPin, LSBFIRST, dec_digits[filenumber+1]);
   shiftOut(dataPin, clockPin, LSBFIRST, dec_digits[0]);
   digitalWrite(latchPin, HIGH);
 }
